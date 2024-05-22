@@ -2,15 +2,29 @@
   "name": "harmonix-entropy",
   "version": "0.0.0",
   "description": "Compute harmonic entropy of a musical interval",
-  "main": "build/src/index.js",
-  "types": "build/src/index.d.ts",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/frostburn"
+  },
+  "main": "dist/index",
+  "types": "dist/index.d.ts",
   "files": [
-    "build/src"
+    "dist"
   ],
   "license": "MIT",
-  "keywords": ["xenharmonic", "music", "harmonic", "entropy"],
+  "keywords": [
+    "xenharmonic",
+    "music",
+    "harmonic",
+    "entropy"
+  ],
+  "author": "Lumi Pakkanen",
+  "homepage": "https://github.com/xenharmonic-devs/harmonic-entropy#readme",
+  "bugs": {
+    "url": "https://github.com/xenharmonic-devs/harmonic-entropy/issues"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
     "lint": "gts lint",
     "clean": "gts clean",
     "compile": "tsc",
@@ -20,8 +34,15 @@
     "posttest": "npm run lint"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.6",
+    "@types/node": "20.8.2",
     "gts": "^5.2.0",
+    "jsdom": "^23.0.1",
     "typescript": "~5.2.0",
-    "@types/node": "20.8.2"
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "frost-fft": "^0.1.0",
+    "xen-dev-utils": "^0.7.0"
   }
 }
