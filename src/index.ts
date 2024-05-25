@@ -1,30 +1,45 @@
 import {Fraction, FractionValue, gcd, valueToCents} from 'xen-dev-utils';
 import {conv, padded64} from './helpers';
 
-export type HarmonicEntropyInfo = {
-  N: number;
-  s: number;
-  a: number;
-  series: 'tenney' | 'farey';
-  dist: 'linear' | 'log';
-  mincents: number;
-  maxcents: number;
-  res: number;
-  normalize: boolean;
+/**
+ * Options for configuring harmonic entropy calculation.
+ */
+export type HarmonicEntropyOptions = {
+  /** Max height of rationals (Benedetti (default 10k) or Wilson (default 1000) depending on series) */
+  N?: number;
+  /** Gaussian frequency deviation (default 0.01) */
+  s?: number;
+  /** Rényi order (default 1.0 i.e Shanon entropy) */
+  a?: number;
+  /** Series of rationals to use (default 'tenney') */
+  series?: 'tenney' | 'farey';
+  /** Lower bound of tabulation (default 0) */
+  minCents?: number;
+  /** Upper bound of tabulation (default 2400) */
+  maxCents?: number;
+  /** Tabulation delta in cents (default 1) */
+  res?: number;
+  /** Flag to normalize the result by Hartley entropy (default false) */
+  normalize?: boolean;
 };
 
-export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
-  //globals
-  const {res, dist, series, normalize} = HEinfo;
-  let a = HEinfo.a;
-  const scents = valueToCents(HEinfo.s + 1);
-  let min = HEinfo.mincents;
-  let max = HEinfo.maxcents;
-
-  if (dist === 'linear') {
-    min = 0;
-    max = 1200;
-  }
+/**
+ * Calculate a harmonic entropy table.
+ * @param options Parameters for calculating the table.
+ * @param ratios Ratios precalculated using {@link precalculateRatios}.
+ * @returns Array of [cents, entropy (in natural units)].
+ */
+export function harmonicEntropy(
+  options: HarmonicEntropyOptions,
+  ratios: number[][]
+): [number, number][] {
+  const scents = valueToCents((options.s ?? 0.01) + 1);
+  let a = options.a ?? 1;
+  const res = options.res ?? 1;
+  const series = options.series ?? 'tenney';
+  const normalize = !!options.normalize;
+  let min = options.minCents ?? 0;
+  let max = options.maxCents ?? 2400;
 
   const outLen = Math.ceil((max - min) / res) + 1;
 
@@ -43,16 +58,14 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   const k = padded64(kernelSize);
   const ak = padded64(kernelSize);
 
-  for (let i = locr.length - 1; i >= 0; i--) {
-    let rcent, rcompl;
+  for (let i = ratios.length - 1; i >= 0; i--) {
+    let rcompl;
 
-    if (dist === 'log') rcent = valueToCents(locr[i][0] / locr[i][1]);
-    else if (dist === 'linear') rcent = (1200 * locr[i][0]) / locr[i][1];
-    else throw new Error(`Unsupported dist ${dist}`);
+    const rcent = valueToCents(ratios[i][0] / ratios[i][1]);
 
-    if (series === 'tenney') rcompl = Math.sqrt(locr[i][0] * locr[i][1]);
-    else if (series === 'farey') rcompl = locr[i][1];
-    else throw new Error(`Unsupported seriese ${series}`);
+    if (series === 'tenney') rcompl = Math.sqrt(ratios[i][0] * ratios[i][1]);
+    else if (series === 'farey') rcompl = ratios[i][1];
+    else throw new Error(`Unsupported series ${series}`);
 
     //check for bounds to optimize
     if (rcent < min || rcent > max) continue;
@@ -122,11 +135,17 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   return out;
 }
 
-export function preCalcRatios(HEinfo: HarmonicEntropyInfo) {
+/**
+ * Precalculate the set of ratios considered when calculating {@link harmonicEntropy}.
+ * @param options Parameters for calculating the table.
+ * @returns Array of [numerator, denominator] pairs.
+ */
+export function precalculateRatios(options: HarmonicEntropyOptions) {
   const r = new Array<[number, number]>();
 
-  let n = HEinfo.N;
-  if (HEinfo.series === 'tenney') {
+  let n = options.N;
+  if (options.series === 'tenney') {
+    n ??= 10000;
     do {
       const max = Math.floor(Math.sqrt(n));
       for (let i = 1; i <= max; i++) {
@@ -137,7 +156,8 @@ export function preCalcRatios(HEinfo: HarmonicEntropyInfo) {
         }
       }
     } while (--n >= 0);
-  } else if (HEinfo.series === 'farey') {
+  } else if (options.series === 'farey') {
+    n ??= 1000;
     do {
       for (let i = 0; i <= n; i++) {
         if (gcd(i, n) === 1) {
@@ -150,35 +170,81 @@ export function preCalcRatios(HEinfo: HarmonicEntropyInfo) {
   return r;
 }
 
+/**
+ * Construct a harmonic entropy calculator for individual musical intervals.
+ */
 export class EntropyCalculator {
-  private info: HarmonicEntropyInfo;
+  private options: HarmonicEntropyOptions;
   private ratios: [number, number][];
   private table: [number, number][];
 
-  constructor(info: HarmonicEntropyInfo) {
-    this.info = {...info};
-    this.ratios = preCalcRatios(this.info);
-    this.table = harmonicEntropy(this.info, this.ratios);
+  constructor(info?: HarmonicEntropyOptions) {
+    this.options = {...info};
+    this.ratios = precalculateRatios(this.options);
+    this.table = harmonicEntropy(this.options, this.ratios);
   }
 
   get a() {
-    return this.info.a;
+    return this.options.a ?? 1.0;
   }
   set a(value: number) {
-    this.info.a = value;
-    this.table = harmonicEntropy(this.info, this.ratios);
+    this.options.a = value;
+    this.table = harmonicEntropy(this.options, this.ratios);
   }
 
   get s() {
-    return this.info.a;
+    return this.options.s ?? 0.01;
   }
   set s(value: number) {
-    this.info.s = value;
-    this.table = harmonicEntropy(this.info, this.ratios);
+    this.options.s = value;
+    this.table = harmonicEntropy(this.options, this.ratios);
   }
 
-  // TODO: getters and setters for the rest of the cheaper parameters
+  get series() {
+    return this.options.series ?? 'tenney';
+  }
+  set series(value: 'tenney' | 'farey') {
+    this.options.series = value;
+    this.table = harmonicEntropy(this.options, this.ratios);
+  }
 
+  get minCents() {
+    return this.options.minCents ?? 0;
+  }
+  set minCents(value: number) {
+    this.options.minCents = value;
+    this.table = harmonicEntropy(this.options, this.ratios);
+  }
+
+  get maxCents() {
+    return this.options.maxCents ?? 2400;
+  }
+  set maxCents(value: number) {
+    this.options.maxCents = value;
+    this.table = harmonicEntropy(this.options, this.ratios);
+  }
+
+  get res() {
+    return this.options.res ?? 1;
+  }
+  set res(value: number) {
+    this.options.res = value;
+    this.table = harmonicEntropy(this.options, this.ratios);
+  }
+
+  get normalize() {
+    return !!this.options.normalize;
+  }
+  set normalize(value: boolean) {
+    this.options.normalize = value;
+    this.table = harmonicEntropy(this.options, this.ratios);
+  }
+
+  /**
+   * Calculate the harmonic entropy of a rational number.
+   * @param value Fractional value.
+   * @returns The harmonic entropy of the input in natural units.
+   */
   ofFraction(value: FractionValue) {
     let cents: number;
     if (typeof value === 'number') {
@@ -189,16 +255,21 @@ export class EntropyCalculator {
     return this.ofCents(cents);
   }
 
+  /**
+   * Calculate the harmonic entropy of a musical interval measured in cents.
+   * @param cents Width of the interval.
+   * @returns The harmonic entropy of the input in natural units.
+   */
   ofCents(cents: number) {
     if (isNaN(cents)) {
       throw new Error('Invalid input');
     }
     // Dyadic entropy is symmetric
     cents = Math.abs(cents);
-    if (cents < this.info.mincents || cents > this.info.maxcents) {
+    if (cents < this.minCents || cents > this.maxCents) {
       throw new Error('Value out of tabulated range');
     }
-    let mu = (cents - this.info.mincents) / this.info.res;
+    let mu = (cents - this.minCents) / this.res;
     const index = Math.floor(mu);
     mu -= index;
     if (!mu) {
