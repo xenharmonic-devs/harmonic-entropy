@@ -63,14 +63,20 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   const {res, dist, series, normalize} = HEinfo;
   let a = HEinfo.a;
   const scents = valueToCents(HEinfo.s + 1);
-  const padding = Math.round(100 * scents);
-  let min = HEinfo.mincents - padding;
-  let max = HEinfo.maxcents + padding;
+  let min = HEinfo.mincents;
+  let max = HEinfo.maxcents;
 
   if (dist === 'linear') {
-    min = 0 - padding;
-    max = 1200 + padding;
+    min = 0;
+    max = 1200;
   }
+
+  const outLen = Math.ceil((max - min) / res) + 1;
+
+  const arrayPadding = Math.ceil((100 * scents) / res);
+  const padding = arrayPadding * res;
+  min -= padding;
+  max += padding;
 
   a = a === 1 ? (a = 1.0000000001) : a;
   let rcount = 0;
@@ -79,7 +85,7 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   const k = new Array<number>();
   const ak = new Array<number>();
 
-  for (let i = (max - min) / res; i >= 0; i--) {
+  for (let i = Math.ceil((max - min) / res); i >= 0; i--) {
     k[i] = 0;
     ak[i] = 0;
   }
@@ -100,29 +106,27 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
 
     rcount++;
 
+    let mu = (rcent - min) / res;
+    const index = Math.floor(mu);
+    mu -= index;
+
     //start building kernel, first check for rounded off case that doesn't need interpolation
-    if (rcent === Math.round(rcent)) {
-      const index = (rcent - min) / res;
+    if (!mu) {
       k[index] += 1 / rcompl;
       ak[index] += 1 / Math.pow(rcompl, a);
     }
     //or else we do need interpolation
     else {
-      const clow = Math.ceil(rcent) - rcent;
-      const chigh = rcent - Math.floor(rcent);
+      k[index] += (1 / rcompl) * (1 - mu);
+      k[index + 1] += (1 / rcompl) * mu;
 
-      const index = (Math.floor(rcent) - min) / res;
-      k[index] += (1 / rcompl) * clow;
-      k[index + 1] += (1 / rcompl) * chigh;
-
-      ak[index] += (1 / Math.pow(rcompl, a)) * clow;
-      ak[index + 1] += (1 / Math.pow(rcompl, a)) * chigh;
+      ak[index] += (1 / Math.pow(rcompl, a)) * (1 - mu);
+      ak[index + 1] += (1 / Math.pow(rcompl, a)) * mu;
     }
   }
 
   // do convolution
   // first pad to a power of two to make the convolution easier for numerous reasons
-  const oldlen = k.length;
   let minlen = 1;
   while (minlen < 2 * k.length)
     // 2 is to avoid circular convolution distortion
@@ -165,10 +169,11 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
 
   // trim answer and out
   const out = new Array<[number, number]>();
-  for (let i = oldlen - padding / res - 1; i >= padding / res; i--) {
+  for (let i = outLen - 1; i >= 0; i--) {
+    const j = i + arrayPadding;
     const outval =
-      ((1 / (1 - a)) * Math.log(ent[i] / Math.pow(nrm[i], a))) / nrmfct;
-    out[i - padding / res] = [i * res + min, outval];
+      ((1 / (1 - a)) * Math.log(ent[j] / Math.pow(nrm[j], a))) / nrmfct;
+    out[i] = [j * res + min, outval];
   }
   return out;
 }

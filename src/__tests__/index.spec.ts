@@ -103,12 +103,52 @@ describe('Harmonic entropy calculator', () => {
     const r = preCalcRatios(HEinfo);
     const entropy = harmonicEntropy(HEinfo, r);
     expect(entropy).toHaveLength(1201);
-    let x: number, y: number;
-    [x, y] = entropy[100];
+    let [x, y] = entropy[100];
     expect(x).toBe(100);
     expect(y).toBeCloseTo(2.755);
     [x, y] = entropy[700];
     expect(x).toBe(700);
     expect(y).toBeCloseTo(1.15239);
+  });
+
+  it('supports fractional resolution', () => {
+    const HEinfo: HarmonicEntropyInfo = {
+      N: 1000,
+      a: 1,
+      s: 0.01,
+      series: 'tenney',
+      dist: 'log',
+      mincents: 0,
+      maxcents: 100,
+      res: 0.5,
+      normalize: false,
+    };
+    const r = preCalcRatios(HEinfo);
+    const entropy = harmonicEntropy(HEinfo, r);
+    let [x, y] = entropy[51];
+    expect(x).toBe(25.5);
+    expect(y).toBeCloseTo(0.50917);
+    [x, y] = entropy[200];
+    expect(x).toBe(100);
+    expect(y).toBeCloseTo(2.755);
+  });
+
+  it('supports coarce resolution', () => {
+    const HEinfo: HarmonicEntropyInfo = {
+      N: 1000,
+      a: 1,
+      s: 0.01,
+      series: 'tenney',
+      dist: 'log',
+      mincents: 0,
+      maxcents: 100,
+      res: 2,
+      normalize: false,
+    };
+    const r = preCalcRatios(HEinfo);
+    const entropy = harmonicEntropy(HEinfo, r);
+    const [x, y] = entropy[50];
+    expect(x).toBe(100);
+    expect(y).toBeCloseTo(2.755);
   });
 });
