@@ -42,7 +42,7 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
-    "frost-fft": "^0.1.0",
+    "frost-fft": "^0.2.0",
     "xen-dev-utils": "^0.7.0"
   }
 }

@@ -1,4 +1,4 @@
-import {fft, ifft} from 'frost-fft';
+import {fft, ifftReal} from 'frost-fft';
 import {gcd, valueToCents} from 'xen-dev-utils';
 
 export type HarmonicEntropyInfo = {
@@ -33,14 +33,14 @@ export function conv(olda: number[], oldb: number[]) {
     b[i] = 0;
   }
 
-  const zeros = new Float64Array(minlen);
   const a_float64 = new Float64Array(a);
-  const [f_a_real, f_a_imag] = fft(a_float64, zeros);
-  const [f_b_real, f_b_imag] = fft(new Float64Array(b), zeros);
+  const b_float64 = new Float64Array(b);
+  const [f_a_real, f_a_imag] = fft(a_float64);
+  const [f_b_real, f_b_imag] = fft(b_float64);
 
   // Reuse arrays
-  const f_out_real = zeros;
-  const f_out_imag = a_float64;
+  const f_out_real = a_float64;
+  const f_out_imag = b_float64;
   // Normalize result
   const inorm = 1 / minlen;
 
@@ -55,7 +55,7 @@ export function conv(olda: number[], oldb: number[]) {
       (f_a_real[i] * f_b_imag[i] + f_a_imag[i] * f_b_real[i]) * inorm;
   }
 
-  return ifft(f_out_real, f_out_imag)[0].slice(0, len);
+  return ifftReal(f_out_real, f_out_imag).slice(0, len);
 }
 
 export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
