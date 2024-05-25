@@ -184,10 +184,12 @@ export function preCalcRatios(HEinfo: HarmonicEntropyInfo) {
   let n = HEinfo.N;
   if (HEinfo.series === 'tenney') {
     do {
-      for (let i = 1; i <= Math.floor(Math.sqrt(n)); i++) {
-        if (n / i === Math.round(n / i) && gcd(i, n / i) === 1) {
-          r.push([i, n / i]); //does numerator on left, denominator on right
-          if (n / i !== i) r.push([n / i, i]);
+      const max = Math.floor(Math.sqrt(n));
+      for (let i = 1; i <= max; i++) {
+        const m = n / i;
+        if (Number.isInteger(m) && gcd(i, m) === 1) {
+          r.push([i, m]); //does numerator on left, denominator on right
+          if (m !== i) r.push([m, i]);
         }
       }
     } while (--n >= 0);
