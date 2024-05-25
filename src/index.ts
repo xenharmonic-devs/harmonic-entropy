@@ -144,7 +144,8 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
   const r = new Array<[number, number]>();
 
   let n = options.N;
-  if (options.series === 'tenney') {
+  const series = options.series ?? 'tenney';
+  if (series === 'tenney') {
     n ??= 10000;
     do {
       const max = Math.floor(Math.sqrt(n));
@@ -156,7 +157,7 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
         }
       }
     } while (--n >= 0);
-  } else if (options.series === 'farey') {
+  } else if (series === 'farey') {
     n ??= 1000;
     do {
       for (let i = 0; i <= n; i++) {
@@ -175,13 +176,87 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
  */
 export class EntropyCalculator {
   private options: HarmonicEntropyOptions;
-  private ratios: [number, number][];
-  private table: [number, number][];
+  private ratios?: [number, number][];
+  table: [number, number][];
 
-  constructor(info?: HarmonicEntropyOptions) {
-    this.options = {...info};
-    this.ratios = precalculateRatios(this.options);
+  constructor(options?: HarmonicEntropyOptions) {
+    this.options = {...options};
+    // Hack to disable calculation during revification
+    const series = this.options.series;
+    if (series === undefined || series === 'tenney' || series === 'farey') {
+      this.ratios = precalculateRatios(this.options);
+      this.table = harmonicEntropy(this.options, this.ratios);
+    } else {
+      // Keep TypeScript happy.
+      this.table = [];
+    }
+  }
+
+  /**
+   * Revive a {@link EntropyCalculator} instance produced by `EntropyCalculator.toJSON()`. Return everything else as is.
+   *
+   * Intended usage:
+   * ```ts
+   * const data = JSON.parse(serializedData, EntropyCalculator.reviver);
+   * ```
+   *
+   * @param key Property name.
+   * @param value Property value.
+   * @returns Deserialized {@link EntropyCalculator} instance or other data without modifications.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static reviver(key: string, value: any) {
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      value.type === 'EntropyCalculator'
+    ) {
+      const series = value.options.series;
+      const options = {...value.options};
+      options.series = '__revived';
+      const instance = new EntropyCalculator(options);
+      // Bypass setter to prevent recalculation
+      instance.options.series = series;
+      const minCents = instance.minCents;
+      const res = instance.res;
+      instance.table = value.tableY.map((y: number, i: number) => [
+        minCents + i * res,
+        y,
+      ]);
+      return instance;
+    }
+    return value;
+  }
+
+  /**
+   * Serialize the entropy calculator to a JSON compatible object.
+   * @returns The serialized object with property `type` set to `'EntropyCalculator'`.
+   */
+  toJSON() {
+    return {
+      type: 'EntropyCalculator',
+      options: this.options,
+      tableY: this.table.map(xy => xy[1]),
+    };
+  }
+
+  private recalculate() {
+    if (!this.ratios) {
+      this.ratios = precalculateRatios(this.options);
+    }
     this.table = harmonicEntropy(this.options, this.ratios);
+  }
+
+  get N() {
+    if (this.series === 'tenney') {
+      return 10000;
+    }
+    return 1000;
+  }
+  set N(value: number) {
+    this.options.N = value;
+    this.ratios = undefined;
+    this.recalculate();
   }
 
   get a() {
@@ -189,7 +264,7 @@ export class EntropyCalculator {
   }
   set a(value: number) {
     this.options.a = value;
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.recalculate();
   }
 
   get s() {
@@ -197,7 +272,7 @@ export class EntropyCalculator {
   }
   set s(value: number) {
     this.options.s = value;
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.recalculate();
   }
 
   get series() {
@@ -205,7 +280,7 @@ export class EntropyCalculator {
   }
   set series(value: 'tenney' | 'farey') {
     this.options.series = value;
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.recalculate();
   }
 
   get minCents() {
@@ -213,7 +288,7 @@ export class EntropyCalculator {
   }
   set minCents(value: number) {
     this.options.minCents = value;
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.recalculate();
   }
 
   get maxCents() {
@@ -221,7 +296,7 @@ export class EntropyCalculator {
   }
   set maxCents(value: number) {
     this.options.maxCents = value;
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.recalculate();
   }
 
   get res() {
@@ -229,7 +304,7 @@ export class EntropyCalculator {
   }
   set res(value: number) {
     this.options.res = value;
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.recalculate();
   }
 
   get normalize() {
@@ -237,7 +312,7 @@ export class EntropyCalculator {
   }
   set normalize(value: boolean) {
     this.options.normalize = value;
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.recalculate();
   }
 
   /**
