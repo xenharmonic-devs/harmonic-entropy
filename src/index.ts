@@ -13,12 +13,6 @@ export type HarmonicEntropyInfo = {
   normalize: boolean;
 };
 
-// Copyright 2009 Nicholas C. Zakas. All rights reserved.
-// MIT Licensed
-
-// Copyright 2024 Lumi Pakkanen.
-// MIT Licensed
-
 export function conv(olda: number[], oldb: number[]) {
   if (olda.length !== oldb.length) {
     throw new Error('conv(...): input arrays must be the same length');
