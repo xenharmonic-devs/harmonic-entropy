@@ -1,5 +1,10 @@
 import {describe, it, expect} from 'vitest';
-import {HarmonicEntropyInfo, harmonicEntropy, preCalcRatios} from '../index';
+import {
+  EntropyCalculator,
+  HarmonicEntropyInfo,
+  harmonicEntropy,
+  preCalcRatios,
+} from '../index';
 
 describe('Ratio pre-calculator', () => {
   it('calculates ratios for tenney series', () => {
@@ -65,7 +70,7 @@ describe('Ratio pre-calculator', () => {
   });
 });
 
-describe('Harmonic entropy calculator', () => {
+describe('Harmonic entropy calculator (function)', () => {
   it('calculates harmonic entropy', () => {
     const HEinfo: HarmonicEntropyInfo = {
       N: 1000,
@@ -128,5 +133,41 @@ describe('Harmonic entropy calculator', () => {
     const [x, y] = entropy[50];
     expect(x).toBe(100);
     expect(y).toBeCloseTo(2.755);
+  });
+});
+
+describe('Harmonic entropy calculator (class)', () => {
+  it('calculates the harmonic entropy of 700 cents and 100 cents', () => {
+    const HEinfo: HarmonicEntropyInfo = {
+      N: 1000,
+      a: 1,
+      s: 0.01,
+      series: 'tenney',
+      dist: 'log',
+      mincents: 0,
+      maxcents: 1200,
+      res: 1,
+      normalize: false,
+    };
+    const entropy = new EntropyCalculator(HEinfo);
+    expect(entropy.ofCents(700)).toBeCloseTo(1.15239);
+    expect(entropy.ofCents(100)).toBeCloseTo(2.755);
+  });
+
+  it('calculates the harmonic entropy of 3/2 and 9/8', () => {
+    const HEinfo: HarmonicEntropyInfo = {
+      N: 1000,
+      a: 1,
+      s: 0.01,
+      series: 'tenney',
+      dist: 'log',
+      mincents: 0,
+      maxcents: 1200,
+      res: 1,
+      normalize: false,
+    };
+    const entropy = new EntropyCalculator(HEinfo);
+    expect(entropy.ofFraction('3/2')).toBeCloseTo(1.14437);
+    expect(entropy.ofFraction(9 / 8)).toBeCloseTo(2.4649);
   });
 });

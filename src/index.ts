@@ -1,4 +1,4 @@
-import {gcd, valueToCents} from 'xen-dev-utils';
+import {Fraction, FractionValue, gcd, valueToCents} from 'xen-dev-utils';
 import {conv, padded64} from './helpers';
 
 export type HarmonicEntropyInfo = {
@@ -148,4 +148,62 @@ export function preCalcRatios(HEinfo: HarmonicEntropyInfo) {
     } while (--n >= 0);
   }
   return r;
+}
+
+export class EntropyCalculator {
+  private info: HarmonicEntropyInfo;
+  private ratios: [number, number][];
+  private table: [number, number][];
+
+  constructor(info: HarmonicEntropyInfo) {
+    this.info = {...info};
+    this.ratios = preCalcRatios(this.info);
+    this.table = harmonicEntropy(this.info, this.ratios);
+  }
+
+  get a() {
+    return this.info.a;
+  }
+  set a(value: number) {
+    this.info.a = value;
+    this.table = harmonicEntropy(this.info, this.ratios);
+  }
+
+  get s() {
+    return this.info.a;
+  }
+  set s(value: number) {
+    this.info.s = value;
+    this.table = harmonicEntropy(this.info, this.ratios);
+  }
+
+  // TODO: getters and setters for the rest of the cheaper parameters
+
+  ofFraction(value: FractionValue) {
+    let cents: number;
+    if (typeof value === 'number') {
+      cents = valueToCents(value);
+    } else {
+      cents = valueToCents(new Fraction(value).valueOf());
+    }
+    return this.ofCents(cents);
+  }
+
+  ofCents(cents: number) {
+    if (isNaN(cents)) {
+      throw new Error('Invalid input');
+    }
+    // Dyadic entropy is symmetric
+    cents = Math.abs(cents);
+    if (cents < this.info.mincents || cents > this.info.maxcents) {
+      throw new Error('Value out of tabulated range');
+    }
+    let mu = (cents - this.info.mincents) / this.info.res;
+    const index = Math.floor(mu);
+    mu -= index;
+    if (!mu) {
+      return this.table[index][1];
+    }
+    return this.table[index][1] * (1 - mu) + this.table[index + 1][1] * mu;
+  }
 }
