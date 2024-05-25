@@ -1,5 +1,5 @@
-import {fft, ifftReal} from 'frost-fft';
 import {gcd, valueToCents} from 'xen-dev-utils';
+import {conv, padded64} from './helpers';
 
 export type HarmonicEntropyInfo = {
   N: number;
@@ -12,51 +12,6 @@ export type HarmonicEntropyInfo = {
   res: number;
   normalize: boolean;
 };
-
-export function conv(olda: number[], oldb: number[]) {
-  if (olda.length !== oldb.length) {
-    throw new Error('conv(...): input arrays must be the same length');
-  }
-
-  const a = olda.concat();
-  const b = oldb.concat();
-
-  const len = a.length;
-  let minlen = 1;
-  while (minlen < len) {
-    // 2 is to avoid circular convolution distortion
-    minlen *= 2;
-  }
-
-  for (let i = len; i < minlen; i++) {
-    a[i] = 0;
-    b[i] = 0;
-  }
-
-  const a_float64 = new Float64Array(a);
-  const b_float64 = new Float64Array(b);
-  const [f_a_real, f_a_imag] = fft(a_float64);
-  const [f_b_real, f_b_imag] = fft(b_float64);
-
-  // Reuse arrays
-  const f_out_real = a_float64;
-  const f_out_imag = b_float64;
-  // Normalize result
-  const inorm = 1 / minlen;
-
-  // (a+bi)(c+di)
-  // (ac - bd) + (ad + bc)i
-
-  // Do the multiplication out
-  for (let i = minlen - 1; i >= 0; i--) {
-    f_out_real[i] =
-      (f_a_real[i] * f_b_real[i] - f_a_imag[i] * f_b_imag[i]) * inorm;
-    f_out_imag[i] =
-      (f_a_real[i] * f_b_imag[i] + f_a_imag[i] * f_b_real[i]) * inorm;
-  }
-
-  return ifftReal(f_out_real, f_out_imag).slice(0, len);
-}
 
 export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   //globals
@@ -81,14 +36,12 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   a = a === 1 ? (a = 1.0000000001) : a;
   let rcount = 0;
 
-  // build kernel
-  const k = new Array<number>();
-  const ak = new Array<number>();
+  // Size of the padded kernel
+  const kernelSize = Math.ceil((max - min) / res) + 1;
 
-  for (let i = Math.ceil((max - min) / res); i >= 0; i--) {
-    k[i] = 0;
-    ak[i] = 0;
-  }
+  // build kernel (with additional padding to avoid circular convolution issues)
+  const k = padded64(kernelSize);
+  const ak = padded64(kernelSize);
 
   for (let i = locr.length - 1; i >= 0; i--) {
     let rcent, rcompl;
@@ -129,28 +82,18 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   }
 
   // do convolution
-  // first pad to a power of two to make the convolution easier for numerous reasons
-  let minlen = 1;
-  while (minlen < 2 * k.length)
-    // 2 is to avoid circular convolution distortion
-    minlen *= 2;
-
-  for (let i = k.length; i < minlen; i++) {
-    k[i] = 0;
-    ak[i] = 0;
-  }
 
   // now work out gaussian
-  const g = new Array<number>(minlen);
-  const ag = new Array<number>(minlen);
+  const g = padded64(kernelSize);
+  const ag = padded64(kernelSize);
   let g_sum = 0;
   const s = -1 / (2 * scents * scents);
-  for (let i = minlen - 1; i >= 0; i--) {
+  for (let i = g.length - 1; i >= 0; i--) {
     const c = i * res + min;
     const gval =
       (1 / (scents * 2 * Math.PI)) * Math.exp(Math.pow(c - min, 2) * s) +
       (1 / (scents * 2 * Math.PI)) *
-        Math.exp(Math.pow(c - (minlen * res + min), 2) * s);
+        Math.exp(Math.pow(c - (g.length * res + min), 2) * s);
     g[i] = gval;
     g_sum += gval;
   }

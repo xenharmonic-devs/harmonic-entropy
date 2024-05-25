@@ -1,27 +1,5 @@
 import {describe, it, expect} from 'vitest';
-import {
-  HarmonicEntropyInfo,
-  conv,
-  harmonicEntropy,
-  preCalcRatios,
-} from '../index';
-
-describe('Convolution', () => {
-  it('causes no change to a single impulse', () => {
-    const impulse = [1, 0, 0, 0, 0];
-    const result = conv(impulse, impulse);
-    expect(result).toEqual(new Float64Array([1, 0, 0, 0, 0]));
-  });
-
-  it('convolvest two arrays', () => {
-    const a = [0.0, 1.0, 1.0, 0, 0, 0, 0, 0];
-    const b = [0.5, 1.0, 0.5, 0, 0, 0, 0, 0];
-    const result = conv(a, b);
-    expect(result.map(n => Math.round(n * 1024) / 1024)).toEqual(
-      new Float64Array([0, 0.5, 1.5, 1.5, 0.5, 0, 0, 0])
-    );
-  });
-});
+import {HarmonicEntropyInfo, harmonicEntropy, preCalcRatios} from '../index';
 
 describe('Ratio pre-calculator', () => {
   it('calculates ratios for tenney series', () => {
