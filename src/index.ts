@@ -110,18 +110,21 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
     const index = Math.floor(mu);
     mu -= index;
 
+    const icompl = 1 / rcompl;
+    const acompl = Math.pow(rcompl, -a);
+
     //start building kernel, first check for rounded off case that doesn't need interpolation
     if (!mu) {
-      k[index] += 1 / rcompl;
-      ak[index] += 1 / Math.pow(rcompl, a);
+      k[index] += icompl;
+      ak[index] += acompl;
     }
     //or else we do need interpolation
     else {
-      k[index] += (1 / rcompl) * (1 - mu);
-      k[index + 1] += (1 / rcompl) * mu;
+      k[index] += icompl * (1 - mu);
+      k[index + 1] += icompl * mu;
 
-      ak[index] += (1 / Math.pow(rcompl, a)) * (1 - mu);
-      ak[index + 1] += (1 / Math.pow(rcompl, a)) * mu;
+      ak[index] += acompl * (1 - mu);
+      ak[index + 1] += acompl * mu;
     }
   }
 
@@ -141,15 +144,13 @@ export function harmonicEntropy(HEinfo: HarmonicEntropyInfo, locr: number[][]) {
   const g = new Array<number>(minlen);
   const ag = new Array<number>(minlen);
   let g_sum = 0;
+  const s = -1 / (2 * scents * scents);
   for (let i = minlen - 1; i >= 0; i--) {
     const c = i * res + min;
     const gval =
+      (1 / (scents * 2 * Math.PI)) * Math.exp(Math.pow(c - min, 2) * s) +
       (1 / (scents * 2 * Math.PI)) *
-        Math.exp(-(Math.pow(c - min, 2) / (2 * scents * scents))) +
-      (1 / (scents * 2 * Math.PI)) *
-        Math.exp(
-          -(Math.pow(c - (minlen * res + min), 2) / (2 * scents * scents))
-        );
+        Math.exp(Math.pow(c - (minlen * res + min), 2) * s);
     g[i] = gval;
     g_sum += gval;
   }
