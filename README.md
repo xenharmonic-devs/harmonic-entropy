@@ -20,7 +20,11 @@ You can read about how harmonic entropy relates to musical concodrance in the [X
 Compute the entropy graph for the range from 0 cents to 2400 cents (two octaves).
 
 ```ts
-import {type HarmonicEntropyOptions, precalculateRatios, harmonicEntropy} from 'harmonic-entropy';
+import {
+  type HarmonicEntropyOptions,
+  precalculateRatios,
+  harmonicEntropy
+} from 'harmonic-entropy';
 
 const options: HarmonicEntropyOptions = {
   N: 10000,         // Maximum Benedetti height of rationals to consider (default)
