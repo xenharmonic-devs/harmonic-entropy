@@ -19,7 +19,7 @@ export type HarmonicEntropyOptions = {
   maxCents?: number;
   /** Tabulation delta in cents (default 1) */
   res?: number;
-  /** Flag to normalize the result by Hartley entropy (default false) */
+  /** Boolean flag to normalize the result by Hartley entropy (default false) */
   normalize?: boolean;
 };
 
@@ -247,6 +247,7 @@ export class EntropyCalculator {
     this.table = harmonicEntropy(this.options, this.ratios);
   }
 
+  /** Max height of rationals (Benedetti or Wilson depending on series) */
   get N() {
     if (this.series === 'tenney') {
       return 10000;
@@ -259,14 +260,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  get a() {
-    return this.options.a ?? 1.0;
-  }
-  set a(value: number) {
-    this.options.a = value;
-    this.recalculate();
-  }
-
+  /** Gaussian frequency deviation (default 0.01) */
   get s() {
     return this.options.s ?? 0.01;
   }
@@ -275,6 +269,16 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
+  /** Rényi order */
+  get a() {
+    return this.options.a ?? 1.0;
+  }
+  set a(value: number) {
+    this.options.a = value;
+    this.recalculate();
+  }
+
+  /** Series of rationals to use */
   get series() {
     return this.options.series ?? 'tenney';
   }
@@ -283,6 +287,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
+  /** Lower bound of tabulation */
   get minCents() {
     return this.options.minCents ?? 0;
   }
@@ -291,6 +296,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
+  /** Upper bound of tabulation */
   get maxCents() {
     return this.options.maxCents ?? 2400;
   }
@@ -299,6 +305,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
+  /** Tabulation delta in cents */
   get res() {
     return this.options.res ?? 1;
   }
@@ -307,6 +314,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
+  /** Boolean flag to normalize the result by Hartley entropy */
   get normalize() {
     return !!this.options.normalize;
   }
@@ -319,6 +327,7 @@ export class EntropyCalculator {
    * Calculate the harmonic entropy of a rational number.
    * @param value Fractional value.
    * @returns The harmonic entropy of the input in natural units.
+   * @throws An error if the input is outside of the tablated range.
    */
   ofFraction(value: FractionValue) {
     let cents: number;
@@ -334,6 +343,7 @@ export class EntropyCalculator {
    * Calculate the harmonic entropy of a musical interval measured in cents.
    * @param cents Width of the interval.
    * @returns The harmonic entropy of the input in natural units.
+   * @throws An error if the input is outside the range of `.minCents` and `.maxCents`.
    */
   ofCents(cents: number) {
     if (isNaN(cents)) {

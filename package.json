@@ -32,13 +32,15 @@
     "prepare": "npm run compile",
     "pretest": "npm run compile",
     "posttest": "npm run lint",
-    "bench": "vitest bench"
+    "bench": "vitest bench",
+    "doc": "typedoc src/index.ts . --name harmonic-entropy"
   },
   "devDependencies": {
     "@types/jsdom": "^21.1.6",
     "@types/node": "20.8.2",
     "gts": "^5.2.0",
     "jsdom": "^23.0.1",
+    "typedoc": "^0.25.13",
     "typescript": "~5.2.0",
     "vitest": "^1.6.0"
   },
