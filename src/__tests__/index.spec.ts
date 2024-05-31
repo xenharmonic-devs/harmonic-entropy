@@ -163,6 +163,7 @@ describe('Harmonic entropy calculator (class)', () => {
       N: 1000,
     };
     const entropy = new EntropyCalculator(options);
+    expect(entropy.N).toBe(1000); // Not default
     expect(entropy.a).toBe(1);
     expect(entropy.s).toBe(0.01);
     expect(entropy.series).toBe('tenney');
@@ -190,5 +191,18 @@ describe('Harmonic entropy calculator (class)', () => {
     // Trigger recalculation
     entropy.res = 1;
     expect(entropy.ofCents(100)).toBeCloseTo(2.755);
+  });
+
+  it('recalculates everything when using the setter', () => {
+    const options: HarmonicEntropyOptions = {
+      N: 1000,
+    };
+    const entropy = new EntropyCalculator(options);
+    expect(entropy.ofCents(200)).toBeCloseTo(2.4707622793708697);
+    entropy.options = {
+      N: 1000,
+      s: 0.02,
+    };
+    expect(entropy.ofCents(200)).toBeCloseTo(3.148409051032972);
   });
 });

@@ -175,17 +175,17 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
  * Construct a harmonic entropy calculator for individual musical intervals.
  */
 export class EntropyCalculator {
-  private options: HarmonicEntropyOptions;
+  private options_: HarmonicEntropyOptions;
   private ratios?: [number, number][];
   table: [number, number][];
 
   constructor(options?: HarmonicEntropyOptions) {
-    this.options = {...options};
+    this.options_ = {...options};
     // Hack to disable calculation during revification
-    const series = this.options.series;
+    const series = this.options_.series;
     if (series === undefined || series === 'tenney' || series === 'farey') {
-      this.ratios = precalculateRatios(this.options);
-      this.table = harmonicEntropy(this.options, this.ratios);
+      this.ratios = precalculateRatios(this.options_);
+      this.table = harmonicEntropy(this.options_, this.ratios);
     } else {
       // Keep TypeScript happy.
       this.table = [];
@@ -216,7 +216,7 @@ export class EntropyCalculator {
       options.series = '__revived';
       const instance = new EntropyCalculator(options);
       // Bypass setter to prevent recalculation
-      instance.options.series = series;
+      instance.options_.series = series;
       const minCents = instance.minCents;
       const res = instance.res;
       instance.table = value.tableY.map((y: number, i: number) => [
@@ -235,91 +235,109 @@ export class EntropyCalculator {
   toJSON() {
     return {
       type: 'EntropyCalculator',
-      options: this.options,
+      options: this.options_,
       tableY: this.table.map(xy => xy[1]),
     };
   }
 
   private recalculate() {
     if (!this.ratios) {
-      this.ratios = precalculateRatios(this.options);
+      this.ratios = precalculateRatios(this.options_);
     }
-    this.table = harmonicEntropy(this.options, this.ratios);
+    this.table = harmonicEntropy(this.options_, this.ratios);
+  }
+
+  /** Options associated with this harmonic entropy calculator. */
+  get options() {
+    return {...this.options_};
+  }
+  set options(value: HarmonicEntropyOptions) {
+    const oldN = this.N;
+    const oldSeries = this.series;
+    this.options_ = {...value};
+    if (this.N !== oldN || this.series !== oldSeries) {
+      this.ratios = undefined;
+    }
+    this.recalculate();
   }
 
   /** Max height of rationals (Benedetti or Wilson depending on series) */
   get N() {
-    if (this.series === 'tenney') {
-      return 10000;
+    if (this.options_.N === undefined) {
+      if (this.series === 'tenney') {
+        return 10000;
+      }
+      return 1000;
     }
-    return 1000;
+    return this.options_.N;
   }
   set N(value: number) {
-    this.options.N = value;
+    this.options_.N = value;
     this.ratios = undefined;
     this.recalculate();
   }
 
   /** Gaussian frequency deviation (default 0.01) */
   get s() {
-    return this.options.s ?? 0.01;
+    return this.options_.s ?? 0.01;
   }
   set s(value: number) {
-    this.options.s = value;
+    this.options_.s = value;
     this.recalculate();
   }
 
   /** Rényi order */
   get a() {
-    return this.options.a ?? 1.0;
+    return this.options_.a ?? 1.0;
   }
   set a(value: number) {
-    this.options.a = value;
+    this.options_.a = value;
     this.recalculate();
   }
 
   /** Series of rationals to use */
   get series() {
-    return this.options.series ?? 'tenney';
+    return this.options_.series ?? 'tenney';
   }
   set series(value: 'tenney' | 'farey') {
-    this.options.series = value;
+    this.options_.series = value;
+    this.ratios = undefined;
     this.recalculate();
   }
 
   /** Lower bound of tabulation */
   get minCents() {
-    return this.options.minCents ?? 0;
+    return this.options_.minCents ?? 0;
   }
   set minCents(value: number) {
-    this.options.minCents = value;
+    this.options_.minCents = value;
     this.recalculate();
   }
 
   /** Upper bound of tabulation */
   get maxCents() {
-    return this.options.maxCents ?? 2400;
+    return this.options_.maxCents ?? 2400;
   }
   set maxCents(value: number) {
-    this.options.maxCents = value;
+    this.options_.maxCents = value;
     this.recalculate();
   }
 
   /** Tabulation delta in cents */
   get res() {
-    return this.options.res ?? 1;
+    return this.options_.res ?? 1;
   }
   set res(value: number) {
-    this.options.res = value;
+    this.options_.res = value;
     this.recalculate();
   }
 
   /** Boolean flag to normalize the result by Hartley entropy */
   get normalize() {
-    return !!this.options.normalize;
+    return !!this.options_.normalize;
   }
   set normalize(value: boolean) {
-    this.options.normalize = value;
+    this.options_.normalize = value;
     this.recalculate();
   }
 
