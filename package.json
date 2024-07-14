@@ -1,6 +1,6 @@
 {
   "name": "harmonic-entropy",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Compute harmonic entropy of a musical interval",
   "funding": {
     "type": "github",
