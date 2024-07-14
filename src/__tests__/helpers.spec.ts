@@ -21,7 +21,7 @@ describe('Convolution', () => {
     b[2] = 0.5;
     const result = conv(a, b);
     expect(result.slice(0, N).map(n => Math.round(n * 1024) / 1024)).toEqual(
-      new Float64Array([0, 0.5, 1.5, 1.5, 0.5, 0, -0, 0])
+      new Float64Array([-0, 0.5, 1.5, 1.5, 0.5, 0, 0, 0])
     );
   });
 });
