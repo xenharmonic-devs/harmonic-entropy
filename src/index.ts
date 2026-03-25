@@ -31,7 +31,7 @@ export type HarmonicEntropyOptions = {
  */
 export function harmonicEntropy(
   options: HarmonicEntropyOptions,
-  ratios: number[][]
+  ratios: number[][],
 ): [number, number][] {
   const scents = valueToCents((options.s ?? 0.01) + 1);
   let a = options.a ?? 1;
