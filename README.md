@@ -1,46 +1,69 @@
 # harmonic-entropy
-Compute harmonic entropy of a musical interval
+
+Compute harmonic entropy of musical intervals.
 
 ## Installation
+
 ```bash
 npm i harmonic-entropy
 ```
 
 ## Documentation
-Documentation is hosted at the project [Github pages](https://xenharmonic-devs.github.io/harmonic-entropy).
 
-To generate documentation locally run:
+- API docs (TypeDoc): <https://xenharmonic-devs.github.io/harmonic-entropy>
+- Generate docs locally:
+
 ```bash
 npm run doc
 ```
-### Other resources
-You can read about how harmonic entropy relates to musical concodrance in the [XenWiki article](https://en.xen.wiki/w/Harmonic_entropy).
 
-## Examples
-Compute the entropy graph for the range from 0 cents to 2400 cents (two octaves).
+## What this package provides
+
+This package exposes:
+
+- `precalculateRatios(options)`: precomputes rational pairs used by the entropy algorithm.
+- `harmonicEntropy(options, ratios)`: computes a tabulated entropy curve as `[cents, entropy]` pairs.
+- `EntropyCalculator`: convenient class for evaluating intervals (`ofCents`, `ofFraction`) with cached tables.
+
+## Options reference
+
+`HarmonicEntropyOptions` fields (all optional):
+
+- `N`: max rational complexity.
+  - default for `series: 'tenney'`: `10000`
+  - default for `series: 'farey'`: `1000`
+- `s`: Gaussian frequency deviation (default `0.01`)
+- `a`: Rényi order (default `1`, evaluated numerically near Shannon entropy)
+- `series`: `'tenney' | 'farey'` (default `'tenney'`)
+- `minCents`: lower tabulation bound (default `0`)
+- `maxCents`: upper tabulation bound (default `2400`)
+- `res`: tabulation step in cents (default `1`)
+- `normalize`: divide by Hartley entropy term (default `false`)
+
+## Example: entropy table for a range
 
 ```ts
 import {
   type HarmonicEntropyOptions,
+  harmonicEntropy,
   precalculateRatios,
-  harmonicEntropy
 } from 'harmonic-entropy';
 
 const options: HarmonicEntropyOptions = {
-  N: 10000,         // Maximum Benedetti height of rationals to consider (default)
-  s: 0.01,          // Gaussian frequency deviation (default)
-  a: 1,             // Rényi order (defaults to Shanon entropy)
-  series: 'tenney', // Series of rationals to use (default)
-  minCents: 0,      // Lower bound of tabulation (default)
-  maxCents: 2400,   // Upper bound of tabulation (default)
-  res: 1,           // Tabulation delta in cents (default)
-  normalize: false, // Boolean flag to normalize the result by Hartley entropy (no normalization by default)
+  N: 10000,
+  s: 0.01,
+  a: 1,
+  series: 'tenney',
+  minCents: 0,
+  maxCents: 2400,
+  res: 1,
+  normalize: false,
 };
 
 // Compute the set of rational numbers to consider.
 const ratios = precalculateRatios(options);
 
-// Compute the table of [cents, entropy] pairs. Entropy is measured in natural units.
+// Compute the table of [cents, entropy] pairs. Entropy is measured in natural (base e) units.
 const table = harmonicEntropy(options, ratios);
 
 // This would be replaced by passing the table your favorite plotting library.
@@ -61,43 +84,56 @@ console.log(table);
 */
 ```
 
-Compute harmonic entropy of individual musical intervals.
+## Example: evaluate individual intervals
 
 ```ts
 import {EntropyCalculator} from 'harmonic-entropy';
 
-const options = {maxCents: 1200};
+const entropy = new EntropyCalculator({maxCents: 1200});
 
-// Preparing the internal tables takes some time.
-const entropy = new EntropyCalculator(options);
+// Evaluate by cents.
+const perfectFifth = entropy.ofCents(700);
 
-// Evaluating entropy is fast.
-const pureFifthEntropy = entropy.ofFraction(3/2);
-console.log(pureFifthEntropy); // 4.121900707092091
+// Evaluate by ratio.
+const pureFifth = entropy.ofFraction('3/2');
+
+// Numeric input is interpreted as a frequency ratio.
+const sameFifth = entropy.ofFraction(3 / 2);
 
 // Tablulated values are linearly interpolated
-const majorSixthEntropy = entropy.ofFraction('5/3');
-console.log(majorSixthEntropy); // 4.42017406844399
+const majorSixth = entropy.ofFraction('5/3');
 
-// Intervals measured in cents are also supported in addition to frequency ratios.
-const perfectFifthEntropy = entropy.ofCents(700);
-console.log(perfectFifthEntropy); // 4.126342260377048
-
-// Store internal tables for later.
-const SERIALIZED = JSON.stringify(entropy);
+console.log({perfectFifth, pureFifth, majorSixth});
+/*
+{
+  perfectFifth: 4.126342260377048,
+  pureFifth:    4.121900707092091,
+  majorSixth:   4.42017406844399,
+}
+*/
 ```
 
-Revive a serialized entropy calculator.
+## Serialization and revival
 
 ```ts
 import {EntropyCalculator} from 'harmonic-entropy';
 
-// Obtain SERIALIZED string from previous example.
+const calc = new EntropyCalculator({N: 1000});
+const serialized = JSON.stringify(calc);
 
-// Revification is fast.
-const entropy = JSON.parse(SERIALIZED, EntropyCalculator.reviver);
+const revived = JSON.parse(serialized, EntropyCalculator.reviver);
 
-// Revived instance works like the original.
-const perfectFifthEntropy = entropy.ofCents(700);
-console.log(perfectFifthEntropy); // 4.126342260377048
+console.log(revived.ofCents(700));
+// 4.126342260377048
 ```
+
+## Notes and caveats
+
+- Constructing `EntropyCalculator` performs precomputation immediately.
+- Lower `res` (finer step) usually improves interpolation fidelity but costs more memory/time.
+- `ofCents` rejects values outside `[minCents, maxCents]`.
+
+## Background reading
+
+- XenWiki article on harmonic entropy and consonance:
+  <https://en.xen.wiki/w/Harmonic_entropy>
