@@ -5,21 +5,21 @@ import {conv, padded64} from './helpers';
  * Options for configuring harmonic entropy calculation.
  */
 export type HarmonicEntropyOptions = {
-  /** Max height of rationals (Benedetti (default 10k) or Wilson (default 1000) depending on series) */
+  /** Max height of rationals (Benedetti for `tenney`, default `10000`; Wilson for `farey`, default `1000`). */
   N?: number;
-  /** Gaussian frequency deviation (default 0.01) */
+  /** Gaussian frequency deviation (default `0.01`). */
   s?: number;
-  /** Rényi order (default 1.0 i.e Shanon entropy) */
+  /** Rényi order (default `1.0`, i.e. Shannon entropy). */
   a?: number;
-  /** Series of rationals to use (default 'tenney') */
+  /** Series of rationals to use (default `'tenney'`). */
   series?: 'tenney' | 'farey';
-  /** Lower bound of tabulation (default 0) */
+  /** Lower bound of tabulation in cents (default `0`). */
   minCents?: number;
-  /** Upper bound of tabulation (default 2400) */
+  /** Upper bound of tabulation in cents (default `2400`). */
   maxCents?: number;
-  /** Tabulation delta in cents (default 1) */
+  /** Tabulation step size in cents (default `1`). */
   res?: number;
-  /** Boolean flag to normalize the result by Hartley entropy (default false) */
+  /** Whether to normalize the result by Hartley entropy (default `false`). */
   normalize?: boolean;
 };
 
@@ -27,7 +27,7 @@ export type HarmonicEntropyOptions = {
  * Calculate a harmonic entropy table.
  * @param options Parameters for calculating the table.
  * @param ratios Ratios precalculated using {@link precalculateRatios}.
- * @returns Array of [cents, entropy (in natural units)].
+ * @returns Array of `[cents, entropy]` pairs where entropy is in natural units.
  */
 export function harmonicEntropy(
   options: HarmonicEntropyOptions,
@@ -54,7 +54,7 @@ export function harmonicEntropy(
   // Size of the padded kernel
   const kernelSize = Math.ceil((max - min) / res) + 1;
 
-  // build kernel (with additional padding to avoid circular convolution issues)
+  // Build kernels (with additional padding to avoid circular convolution issues)
   const k = padded64(kernelSize);
   const ak = padded64(kernelSize);
 
@@ -67,7 +67,7 @@ export function harmonicEntropy(
     else if (series === 'farey') rcompl = ratios[i][1];
     else throw new Error(`Unsupported series ${series}`);
 
-    //check for bounds to optimize
+    // Check bounds to optimize.
     if (rcent < min || rcent > max) continue;
 
     rcount++;
@@ -79,12 +79,12 @@ export function harmonicEntropy(
     const icompl = 1 / rcompl;
     const acompl = Math.pow(rcompl, -a);
 
-    //start building kernel, first check for rounded off case that doesn't need interpolation
+    // Rounded case that does not need interpolation.
     if (!mu) {
       k[index] += icompl;
       ak[index] += acompl;
     }
-    //or else we do need interpolation
+    // Otherwise perform linear interpolation.
     else {
       k[index] += icompl * (1 - mu);
       k[index + 1] += icompl * mu;
@@ -94,9 +94,7 @@ export function harmonicEntropy(
     }
   }
 
-  // do convolution
-
-  // now work out gaussian
+  // Work out gaussian.
   const g = padded64(kernelSize);
   const ag = padded64(kernelSize);
   let g_sum = 0;
@@ -110,7 +108,7 @@ export function harmonicEntropy(
     g[i] = gval;
     g_sum += gval;
   }
-  // normalize gaussian
+  // Normalize gaussian.
   for (let i = g.length - 1; i >= 0; i--) {
     g[i] /= g_sum;
     ag[i] = Math.pow(g[i], a);
@@ -124,7 +122,7 @@ export function harmonicEntropy(
     nrmfct = Math.log(rcount);
   } else nrmfct = 1;
 
-  // trim answer and out
+  // Trim and build output.
   const out = new Array<[number, number]>();
   for (let i = outLen - 1; i >= 0; i--) {
     const j = i + arrayPadding;
@@ -137,8 +135,10 @@ export function harmonicEntropy(
 
 /**
  * Precalculate the set of ratios considered when calculating {@link harmonicEntropy}.
+ *
+ * Returned values are ordered pairs of integer numerator and denominator.
  * @param options Parameters for calculating the table.
- * @returns Array of [numerator, denominator] pairs.
+ * @returns Array of `[numerator, denominator]` pairs.
  */
 export function precalculateRatios(options: HarmonicEntropyOptions) {
   const r = new Array<[number, number]>();
@@ -152,7 +152,7 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
       for (let i = 1; i <= max; i++) {
         const m = n / i;
         if (Number.isInteger(m) && gcd(i, m) === 1) {
-          r.push([i, m]); //does numerator on left, denominator on right
+          r.push([i, m]); // Numerator on left, denominator on right.
           if (m !== i) r.push([m, i]);
         }
       }
@@ -173,6 +173,8 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
 
 /**
  * Construct a harmonic entropy calculator for individual musical intervals.
+ *
+ * The constructor computes both ratio and entropy tables immediately.
  */
 export class EntropyCalculator {
   private options_: HarmonicEntropyOptions;
@@ -181,7 +183,7 @@ export class EntropyCalculator {
 
   constructor(options?: HarmonicEntropyOptions) {
     this.options_ = {...options};
-    // Hack to disable calculation during revification
+    // Hack to disable calculation during revival.
     const series = this.options_.series;
     if (series === undefined || series === 'tenney' || series === 'farey') {
       this.ratios = precalculateRatios(this.options_);
@@ -193,7 +195,7 @@ export class EntropyCalculator {
   }
 
   /**
-   * Revive a {@link EntropyCalculator} instance produced by `EntropyCalculator.toJSON()`. Return everything else as is.
+   * Revive an {@link EntropyCalculator} instance produced by `EntropyCalculator.toJSON()`. Return everything else as-is.
    *
    * Intended usage:
    * ```ts
@@ -215,7 +217,7 @@ export class EntropyCalculator {
       const options = {...value.options};
       options.series = '__revived';
       const instance = new EntropyCalculator(options);
-      // Bypass setter to prevent recalculation
+      // Bypass setter to prevent recalculation.
       instance.options_.series = series;
       const minCents = instance.minCents;
       const res = instance.res;
@@ -229,8 +231,8 @@ export class EntropyCalculator {
   }
 
   /**
-   * Serialize the entropy calculator to a JSON compatible object.
-   * @returns The serialized object with property `type` set to `'EntropyCalculator'`.
+   * Serialize the entropy calculator to a JSON-compatible object.
+   * @returns Serialized payload with `type` set to `'EntropyCalculator'`.
    */
   toJSON() {
     return {
@@ -261,7 +263,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Max height of rationals (Benedetti or Wilson depending on series) */
+  /** Max height of rationals (Benedetti or Wilson depending on series). */
   get N() {
     if (this.options_.N === undefined) {
       if (this.series === 'tenney') {
@@ -277,7 +279,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Gaussian frequency deviation (default 0.01) */
+  /** Gaussian frequency deviation (default `0.01`). */
   get s() {
     return this.options_.s ?? 0.01;
   }
@@ -286,7 +288,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Rényi order */
+  /** Rényi order. */
   get a() {
     return this.options_.a ?? 1.0;
   }
@@ -295,7 +297,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Series of rationals to use */
+  /** Series of rationals to use. */
   get series() {
     return this.options_.series ?? 'tenney';
   }
@@ -305,7 +307,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Lower bound of tabulation */
+  /** Lower bound of tabulation in cents. */
   get minCents() {
     return this.options_.minCents ?? 0;
   }
@@ -314,7 +316,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Upper bound of tabulation */
+  /** Upper bound of tabulation in cents. */
   get maxCents() {
     return this.options_.maxCents ?? 2400;
   }
@@ -323,7 +325,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Tabulation delta in cents */
+  /** Tabulation step size in cents. */
   get res() {
     return this.options_.res ?? 1;
   }
@@ -332,7 +334,7 @@ export class EntropyCalculator {
     this.recalculate();
   }
 
-  /** Boolean flag to normalize the result by Hartley entropy */
+  /** Whether to normalize the result by Hartley entropy. */
   get normalize() {
     return !!this.options_.normalize;
   }
@@ -342,10 +344,10 @@ export class EntropyCalculator {
   }
 
   /**
-   * Calculate the harmonic entropy of a rational number.
-   * @param value Fractional value.
-   * @returns The harmonic entropy of the input in natural units.
-   * @throws An error if the input is outside of the tablated range.
+   * Calculate the harmonic entropy of a frequency ratio.
+   * @param value Ratio-like input accepted by `xen-dev-utils` Fraction parsing. A numeric value is treated as a ratio (for example, `1.5` means `3/2`).
+   * @returns Harmonic entropy of the input in natural units.
+   * @throws Error if the converted cents value is outside of the tabulated range.
    */
   ofFraction(value: FractionValue) {
     let cents: number;
@@ -358,16 +360,16 @@ export class EntropyCalculator {
   }
 
   /**
-   * Calculate the harmonic entropy of a musical interval measured in cents.
+   * Calculate harmonic entropy of a musical interval measured in cents.
    * @param cents Width of the interval.
-   * @returns The harmonic entropy of the input in natural units.
-   * @throws An error if the input is outside the range of `.minCents` and `.maxCents`.
+   * @returns Harmonic entropy of the input in natural units.
+   * @throws Error if the input is outside the range of `.minCents` and `.maxCents`.
    */
   ofCents(cents: number) {
     if (isNaN(cents)) {
       throw new Error('Invalid input');
     }
-    // Dyadic entropy is symmetric
+    // Dyadic entropy is symmetric.
     cents = Math.abs(cents);
     if (cents < this.minCents || cents > this.maxCents) {
       throw new Error('Value out of tabulated range');
