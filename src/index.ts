@@ -1,5 +1,16 @@
-import {Fraction, FractionValue, gcd, valueToCents} from 'xen-dev-utils';
+import {Fraction, FractionValue, valueToCents} from 'xen-dev-utils';
 import {conv, padded64} from './helpers';
+
+function gcdInt(a: number, b: number) {
+  let x = Math.abs(a);
+  let y = Math.abs(b);
+  while (y !== 0) {
+    const r = x % y;
+    x = y;
+    y = r;
+  }
+  return x;
+}
 
 /**
  * Options for configuring harmonic entropy calculation.
@@ -58,40 +69,74 @@ export function harmonicEntropy(
   const k = padded64(kernelSize);
   const ak = padded64(kernelSize);
 
-  for (let i = ratios.length - 1; i >= 0; i--) {
-    let rcompl;
+  if (series === 'tenney') {
+    for (let i = ratios.length - 1; i >= 0; i--) {
+      const ratio = ratios[i];
+      const numerator = ratio[0];
+      const denominator = ratio[1];
+      const rcent = valueToCents(numerator / denominator);
+      const rcompl = Math.sqrt(numerator * denominator);
 
-    const rcent = valueToCents(ratios[i][0] / ratios[i][1]);
+      // Check bounds to optimize.
+      if (rcent < min || rcent > max) continue;
 
-    if (series === 'tenney') rcompl = Math.sqrt(ratios[i][0] * ratios[i][1]);
-    else if (series === 'farey') rcompl = ratios[i][1];
-    else throw new Error(`Unsupported series ${series}`);
+      rcount++;
 
-    // Check bounds to optimize.
-    if (rcent < min || rcent > max) continue;
+      let mu = (rcent - min) / res;
+      const index = Math.floor(mu);
+      mu -= index;
 
-    rcount++;
+      const icompl = 1 / rcompl;
+      const acompl = Math.pow(rcompl, -a);
 
-    let mu = (rcent - min) / res;
-    const index = Math.floor(mu);
-    mu -= index;
+      // Rounded case that does not need interpolation.
+      if (!mu) {
+        k[index] += icompl;
+        ak[index] += acompl;
+      }
+      // Otherwise perform linear interpolation.
+      else {
+        k[index] += icompl * (1 - mu);
+        k[index + 1] += icompl * mu;
 
-    const icompl = 1 / rcompl;
-    const acompl = Math.pow(rcompl, -a);
-
-    // Rounded case that does not need interpolation.
-    if (!mu) {
-      k[index] += icompl;
-      ak[index] += acompl;
+        ak[index] += acompl * (1 - mu);
+        ak[index + 1] += acompl * mu;
+      }
     }
-    // Otherwise perform linear interpolation.
-    else {
-      k[index] += icompl * (1 - mu);
-      k[index + 1] += icompl * mu;
+  } else if (series === 'farey') {
+    for (let i = ratios.length - 1; i >= 0; i--) {
+      const ratio = ratios[i];
+      const rcent = valueToCents(ratio[0] / ratio[1]);
+      const rcompl = ratio[1];
 
-      ak[index] += acompl * (1 - mu);
-      ak[index + 1] += acompl * mu;
+      // Check bounds to optimize.
+      if (rcent < min || rcent > max) continue;
+
+      rcount++;
+
+      let mu = (rcent - min) / res;
+      const index = Math.floor(mu);
+      mu -= index;
+
+      const icompl = 1 / rcompl;
+      const acompl = Math.pow(rcompl, -a);
+
+      // Rounded case that does not need interpolation.
+      if (!mu) {
+        k[index] += icompl;
+        ak[index] += acompl;
+      }
+      // Otherwise perform linear interpolation.
+      else {
+        k[index] += icompl * (1 - mu);
+        k[index + 1] += icompl * mu;
+
+        ak[index] += acompl * (1 - mu);
+        ak[index + 1] += acompl * mu;
+      }
     }
+  } else {
+    throw new Error(`Unsupported series ${series}`);
   }
 
   // Work out gaussian.
@@ -150,8 +195,11 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
     do {
       const max = Math.floor(Math.sqrt(n));
       for (let i = 1; i <= max; i++) {
+        if (n % i !== 0) {
+          continue;
+        }
         const m = n / i;
-        if (Number.isInteger(m) && gcd(i, m) === 1) {
+        if (gcdInt(i, m) === 1) {
           r.push([i, m]); // Numerator on left, denominator on right.
           if (m !== i) r.push([m, i]);
         }
@@ -161,7 +209,7 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
     n ??= 1000;
     do {
       for (let i = 0; i <= n; i++) {
-        if (gcd(i, n) === 1) {
+        if (gcdInt(i, n) === 1) {
           r.push([n, i]);
           if (n !== i) r.push([i, n]);
         }
