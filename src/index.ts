@@ -208,7 +208,7 @@ export function precalculateRatios(options: HarmonicEntropyOptions) {
   } else if (series === 'farey') {
     n ??= 1000;
     do {
-      for (let i = 0; i <= n; i++) {
+      for (let i = 1; i <= n; i++) {
         if (gcdInt(i, n) === 1) {
           r.push([n, i]);
           if (n !== i) r.push([i, n]);
