@@ -1,5 +1,5 @@
 import {Fraction, FractionValue, valueToCents} from 'xen-dev-utils';
-import {conv, padded64} from './helpers';
+import {conv, padded64} from './helpers.js';
 
 function gcdInt(a: number, b: number) {
   let x = Math.abs(a);

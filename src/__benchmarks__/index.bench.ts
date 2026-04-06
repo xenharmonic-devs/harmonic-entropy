@@ -1,5 +1,9 @@
 import {describe, bench, beforeAll} from 'vitest';
-import {precalculateRatios, HarmonicEntropyOptions, harmonicEntropy} from '..';
+import {
+  precalculateRatios,
+  HarmonicEntropyOptions,
+  harmonicEntropy,
+} from '../index.js';
 
 // These benchmarks are not comparative.
 // They're here to inform optimization of the code from version to version.
