@@ -6,6 +6,7 @@
     "type": "github",
     "url": "https://github.com/sponsors/frostburn"
   },
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -14,9 +15,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
+      "import": "./dist/index.js"
     }
   },
   "license": "MIT",
@@ -45,15 +44,15 @@
   },
   "devDependencies": {
     "@types/jsdom": "^28.0.1",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.5.2",
     "gts": "^7.0.0",
     "jsdom": "^29.0.1",
     "typedoc": "^0.28.18",
-    "typescript": "^5.9.3",
-    "vitest": "^4.1.1"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   },
   "dependencies": {
-    "frost-fft": "^0.3.0",
-    "xen-dev-utils": "^0.12.0"
+    "frost-fft": "^0.3.1",
+    "xen-dev-utils": "^0.12.2"
   }
 }

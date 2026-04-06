@@ -4,7 +4,7 @@ import {
   HarmonicEntropyOptions,
   harmonicEntropy,
   precalculateRatios,
-} from '../index';
+} from '../index.js';
 
 describe('Ratio pre-calculator', () => {
   it('calculates ratios for tenney series', () => {

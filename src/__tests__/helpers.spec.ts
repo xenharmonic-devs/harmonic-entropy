@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest';
-import {padded64, conv} from '../helpers';
+import {padded64, conv} from '../helpers.js';
 
 describe('Convolution', () => {
   it('causes no change to a single impulse', () => {
